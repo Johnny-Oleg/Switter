@@ -11,36 +11,59 @@ class FetchData {
 }
 
 class Twitter {
-    constructor({ user, $listElement, modalElements, tweetElements }) {
+    constructor(props) {
+        const {
+            user, 
+            $listElement, 
+            modalElements, 
+            tweetElements, 
+            classDeleteTweet, 
+            classLikeTweet,
+            $sortElement,
+            $userPost,
+            $postLike
+        } = props;
+
         const fetchData = new FetchData();
 
         this._user = user;
-        this.tweets = new Posts();
+        this._tweets = new Posts();
         this.elements = {
-            _listElement: document.querySelector($listElement),
+            _list: document.querySelector($listElement),
+            _sort: document.querySelector($sortElement),
+            _userPost: document.querySelector($userPost),
+            _postLike: document.querySelector($postLike),
             _modal: modalElements,
             _tweet: tweetElements,
         }
+        this._class = {classDeleteTweet, classLikeTweet};
+        this._sortDate = true;
 
         fetchData.getPost().then(data => {
             console.log(data)
 
-            data.forEach(item => this.tweets.addPost(item));
+            data.forEach(item => this._tweets.addPost(item));
             this.showAllPosts();
         })
 
         this.elements._modal.forEach(this.handleModal);
         this.elements._tweet.forEach(this.addTweet);
+        this.elements._list.addEventListener('click', this.handleTweet);
+        this.elements._sort.addEventListener('click', this.handleSort);
+        this.elements._userPost.addEventListener('click', this.showUserPost);
+        this.elements._postLike.addEventListener('click', this.showLikedPosts);
     }
 
     renderPosts = tweets => {
-        this.elements._listElement.textContent = '';
+        const sortedPosts = tweets.sort(this.changeSort());
 
-        tweets.forEach(tweet => {
+        this.elements._list.textContent = '';
+
+        sortedPosts.forEach(tweet => {
             console.log(tweet);
-            const { userName, nickname, getDate, text, img, likes = 0, id } = tweet;
+            const { userName, nickname, getDate, text, img, id, liked, likes = 0 } = tweet;
 
-            this.elements._listElement.insertAdjacentHTML('beforeend', `
+            this.elements._list.insertAdjacentHTML('beforeend', `
                 <li>
                     <article class="tweet">
                         <div class="row">
@@ -64,7 +87,10 @@ class Twitter {
                             </div>
                         </div>
                         <footer>
-                            <button class="tweet__like">
+                            <button 
+                                class="tweet__like ${liked ? this._class.classLikeTweet.like : ''}"
+                                data-id="${id}"
+                            >
                                 ${likes}
                             </button>
                         </footer>
@@ -75,15 +101,19 @@ class Twitter {
     }
 
     showUserPost = () => {
+        const post = this._tweets.posts.filter(post => post.nickname === this._user.nickname);
 
+        this.renderPosts(post);
     }
 
     showLikedPosts = () => {
+        const post = this._tweets.posts.filter(post => post.liked);
 
+        this.renderPosts(post);
     }
 
     showAllPosts = () => {
-        this.renderPosts(this.tweets.posts);
+        this.renderPosts(this._tweets.posts);
     }
 
     handleModal = ({ $button, $modal, $overlay, $close}) => {
@@ -118,7 +148,7 @@ class Twitter {
         let tempString = text.innerHTML;
 
         submit.addEventListener('click', () => {
-            this.tweets.addPost({
+            this._tweets.addPost({
                 userName: this._user.name,
                 nickname: this._user.nickname,
                 text: text.innerHTML,
@@ -136,10 +166,41 @@ class Twitter {
 
         img.addEventListener('click', () => imgUrl = prompt('Url to image'));
     }
+
+    handleTweet = ({ target }) => {
+        if (target.classList.contains(this._class.classDeleteTweet)) {
+            this._tweets.deletePost(target.dataset.id);
+            this.showAllPosts();
+        }
+
+        if (target.classList.contains(this._class.classLikeTweet.like)) {
+            this._tweets.likePost(target.dataset.id);
+            this.showAllPosts();
+        }
+    }
+
+    handleSort = () => {
+        this._sortDate = !this._sortDate;
+        this.showAllPosts();
+    }
+
+    changeSort = () => {
+        if (this._sortDate) {
+            return (a, b) => {
+                const first = new Date(a.postDate);
+                const second = new Date(b.postDate);
+
+                return second - first;
+            }
+        } else {
+            return (a, b) => b.likes - a.likes;
+        }
+    }
 }
 
 class Posts {
-    constructor({ posts = [] } = {}) {
+    constructor(props = {}) {
+        const { posts = [] } = props;
         this.posts = posts;
     }
 
@@ -150,21 +211,21 @@ class Posts {
     }
 
     deletePost = id => {
-
+        this.posts = this.posts.filter(post => post.id !== id);
     }
 
     likePost = id => {
-
+        this.posts.forEach(post => post.id === id && post.changeLike());
     }
 }
 
 class Post {
-    constructor(param) {
-        const { userName, nickname, postDate, text, img, likes = 0, id } = param;
+    constructor(props) {
+        const { userName, nickname, postDate, text, img, likes = 0, id } = props;
 
         this.userName = userName;
         this.nickname = nickname;
-        this.postDate = postDate ? new Date(postDate) : new Date();
+        this.postDate = postDate ? this.correctDate(postDate) : new Date();
         this.text = text;
         this.img = img;
         this.likes = likes;
@@ -172,7 +233,7 @@ class Post {
         this.liked = false;
     }
 
-    changeLikes = () => {
+    changeLike = () => {
         this.liked = !this.liked;
 
         this.liked ? this.likes++ : this.likes--;
@@ -192,6 +253,12 @@ class Post {
         }
 
         return this.postDate.toLocaleDateString('ru-RU', options);
+    }
+
+    correctDate = date => {
+        isNaN(Date.parse(date)) && (date = date.replace(/\./g, '/'));
+
+        return new Date(date);
     }
 }
 
@@ -214,6 +281,19 @@ const twitter = new Twitter({
             $text: '.modal .tweet-form__text',
             $img: '.modal .tweet-img__btn',
             $submit: '.modal .tweet-form__btn',
+        },
+        {
+            $text: '.tweet-form__text',
+            $img: '.tweet-img__btn',
+            $submit: '.tweet-form__btn',
         }
-    ]
+    ],
+    classDeleteTweet: 'tweet__delete-button',
+    classLikeTweet: {
+        like: 'tweet__like',
+        active: 'tweet__like-active',
+    },
+    $sortElement: '.header__link_sort',
+    $userPost: '.header__link_profile',
+    $postLike: '.header__link_likes',
 })
