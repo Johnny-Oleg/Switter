@@ -1,3 +1,5 @@
+'use strict';
+
 class FetchData {
     getResource = async url => {
         const res = await fetch(url);
@@ -40,14 +42,14 @@ class Twitter {
         this._sortDate = true;
 
         fetchData.getPost().then(data => {
-            console.log(data)
-
             data.forEach(item => this._tweets.addPost(item));
+
             this.showAllPosts();
         })
 
         this.elements._modal.forEach(this.handleModal);
         this.elements._tweet.forEach(this.addTweet);
+
         this.elements._list.addEventListener('click', this.handleTweet);
         this.elements._sort.addEventListener('click', this.handleSort);
         this.elements._userPost.addEventListener('click', this.showUserPost);
@@ -60,14 +62,13 @@ class Twitter {
         this.elements._list.textContent = '';
 
         sortedPosts.forEach(tweet => {
-            console.log(tweet);
             const { userName, nickname, getDate, text, img, id, liked, likes = 0 } = tweet;
 
             this.elements._list.insertAdjacentHTML('beforeend', `
                 <li>
                     <article class="tweet">
                         <div class="row">
-                            <img class="avatar" src="images/${nickname}.jpg" alt="Аватар пользователя ${nickname}">
+                            <img class="avatar" src="images/${nickname}.jpg" alt="User's avatar ${nickname}">
                             <div class="tweet__wrapper">
                                 <header class="tweet__header">
                                     <h3 class="tweet-author">${userName}
@@ -88,7 +89,11 @@ class Twitter {
                         </div>
                         <footer>
                             <button 
-                                class="tweet__like ${liked ? this._class.classLikeTweet.like : ''}"
+                                class="tweet__like 
+                                ${liked ? 
+                                    this._class.classLikeTweet.active : 
+                                    this._class.classLikeTweet.like
+                                }"
                                 data-id="${id}"
                             >
                                 ${likes}
@@ -112,9 +117,7 @@ class Twitter {
         this.renderPosts(post);
     }
 
-    showAllPosts = () => {
-        this.renderPosts(this._tweets.posts);
-    }
+    showAllPosts = () => this.renderPosts(this._tweets.posts);
 
     handleModal = ({ $button, $modal, $overlay, $close}) => {
         const button = document.querySelector($button);
@@ -122,21 +125,15 @@ class Twitter {
         const overlay = document.querySelector($overlay);
         const close = document.querySelector($close);
 
-        const openModal = () => {
-            modal.style.display = 'block';
-        }
+        const openModal = () => modal.style.display = 'block';
 
-         const closeModal = (elem, { target }) => {
-            target === elem && (modal.style.display = 'none');
-        }
+         const closeModal = (elem, { target }) => target === elem && (modal.style.display = 'none');
 
         button.addEventListener('click', openModal);
         close && close.addEventListener('click', closeModal.bind(null, close));
         overlay && overlay.addEventListener('click', closeModal.bind(null, overlay));
 
-        this.handleModal.closeModal = () => {
-            modal.style.display = 'none';
-        };
+        this.handleModal.closeModal = () => modal.style.display = 'none';
     }
 
     addTweet = ({ $text, $img, $submit }) => {
@@ -157,13 +154,11 @@ class Twitter {
 
             this.showAllPosts();
             this.handleModal.closeModal();
+
             text.innerHTML = tempString;
         })
 
-        text.addEventListener('click', () => {
-            text.innerHTML === tempString && (text.innerHTML = '');
-        })
-
+        text.addEventListener('click', () => text.innerHTML === tempString && (text.innerHTML = ''));
         img.addEventListener('click', () => imgUrl = prompt('Url to image'));
     }
 
@@ -181,6 +176,7 @@ class Twitter {
 
     handleSort = () => {
         this._sortDate = !this._sortDate;
+
         this.showAllPosts();
     }
 
@@ -210,13 +206,9 @@ class Posts {
         this.posts.push(post);
     }
 
-    deletePost = id => {
-        this.posts = this.posts.filter(post => post.id !== id);
-    }
+    deletePost = id => this.posts = this.posts.filter(post => post.id !== id);
 
-    likePost = id => {
-        this.posts.forEach(post => post.id === id && post.changeLike());
-    }
+    likePost = id => this.posts.forEach(post => post.id === id && post.changeLike());
 }
 
 class Post {
@@ -239,9 +231,7 @@ class Post {
         this.liked ? this.likes++ : this.likes--;
     }
 
-    generateId = () => {
-        return Math.random().toString(32).substring(2, 9) + (+new Date).toString(32);
-    }
+    generateId = () => Math.random().toString(32).substring(2, 9) + (+new Date).toString(32);
 
     getDate = () => {
         const options = {
